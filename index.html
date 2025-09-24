@@ -1,0 +1,1751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WiFi Portal - Internet Access</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌐</text></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            position: relative;
+        }
+
+        .background-pattern {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.1;
+            background-image: 
+                radial-gradient(circle at 20% 80%, white 2px, transparent 2px),
+                radial-gradient(circle at 80% 20%, white 2px, transparent 2px);
+            background-size: 100px 100px;
+            animation: float 20s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .app {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 280px;
+            background: rgba(44, 62, 80, 0.95);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 20px 0;
+            transition: transform 0.3s ease;
+            box-shadow: 2px 0 20px rgba(0,0,0,0.1);
+        }
+
+        .sidebar.hidden {
+            transform: translateX(-100%);
+        }
+
+        .logo {
+            text-align: center;
+            padding: 0 20px 30px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 30px;
+        }
+
+        .logo h2 {
+            font-size: 24px;
+            margin-bottom: 5px;
+            background: linear-gradient(45deg, #3498db, #e74c3c);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo p {
+            opacity: 0.7;
+            font-size: 14px;
+        }
+
+        .nav-item {
+            display: block;
+            padding: 15px 25px;
+            color: white;
+            text-decoration: none;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .nav-item:hover {
+            background: rgba(255,255,255,0.1);
+            border-left-color: #3498db;
+            transform: translateX(5px);
+        }
+
+        .nav-item.active {
+            background: rgba(255,255,255,0.15);
+            border-left-color: #e74c3c;
+            transform: translateX(10px);
+        }
+
+        .nav-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(45deg, #3498db, #e74c3c);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .nav-item.active::before {
+            opacity: 1;
+        }
+
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+        }
+
+        .header {
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px 30px;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+        }
+
+        .content {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        .page {
+            display: none;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 0 5px;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn-primary { 
+            background: linear-gradient(135deg, #007bff, #0056b3); 
+            color: white; 
+        }
+        .btn-success { 
+            background: linear-gradient(135deg, #28a745, #1e7e34); 
+            color: white; 
+        }
+        .btn-danger { 
+            background: linear-gradient(135deg, #dc3545, #bd2130); 
+            color: white; 
+        }
+        .btn-warning { 
+            background: linear-gradient(135deg, #ffc107, #d39e00); 
+            color: black; 
+        }
+
+        /* Authentication Styles */
+        .auth-container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        .auth-header {
+            margin-bottom: 30px;
+        }
+
+        .auth-icon {
+            font-size: 72px;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .auth-title {
+            font-size: 32px;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .auth-subtitle {
+            color: #7f8c8d;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        .auth-methods {
+            display: grid;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .auth-method {
+            padding: 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .auth-method:hover {
+            border-color: #007bff;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .auth-method.active {
+            border-color: #007bff;
+            background: #f8f9ff;
+        }
+
+        .auth-method-icon {
+            font-size: 24px;
+            margin-right: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: rgba(255,255,255,0.8);
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+            transform: translateY(-1px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.1);
+        }
+
+        .auth-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 18px 30px;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 20px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .auth-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .auth-btn:hover::before {
+            left: 100%;
+        }
+
+        .auth-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        .auth-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .oauth-buttons {
+            display: grid;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .oauth-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 20px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            color: #333;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .oauth-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .oauth-btn.google {
+            border-color: #4285f4;
+            color: #4285f4;
+        }
+
+        .oauth-btn.google:hover {
+            background: #4285f4;
+            color: white;
+        }
+
+        .oauth-btn.facebook {
+            border-color: #1877f2;
+            color: #1877f2;
+        }
+
+        .oauth-btn.facebook:hover {
+            background: #1877f2;
+            color: white;
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #ddd;
+        }
+
+        .divider span {
+            padding: 0 15px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .client-info {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(248, 249, 250, 0.8);
+            border-radius: 12px;
+            font-size: 14px;
+            color: #6c757d;
+            backdrop-filter: blur(5px);
+        }
+
+        /* Admin Panel Styles */
+        .admin-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: transform 0.3s ease;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 8px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-label {
+            color: #6c757d;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .card {
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            border: 1px solid rgba(255,255,255,0.3);
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 20px 25px;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+            font-weight: 700;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+        }
+
+        .card-body {
+            padding: 25px;
+        }
+
+        .config-section {
+            margin-bottom: 30px;
+            padding: 25px;
+            background: rgba(255,255,255,0.8);
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+
+        .config-section h3 {
+            margin-bottom: 20px;
+            color: #2c3e50;
+            font-size: 20px;
+        }
+
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+            margin-left: 10px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 12px;
+            color: white;
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            max-width: 350px;
+            backdrop-filter: blur(10px);
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success { 
+            background: linear-gradient(135deg, #28a745, rgba(40, 167, 69, 0.9)); 
+        }
+        .notification.warning { 
+            background: linear-gradient(135deg, #ffc107, rgba(255, 193, 7, 0.9)); 
+            color: black; 
+        }
+        .notification.error { 
+            background: linear-gradient(135deg, #dc3545, rgba(220, 53, 69, 0.9)); 
+        }
+        .notification.info { 
+            background: linear-gradient(135deg, #17a2b8, rgba(23, 162, 184, 0.9)); 
+        }
+
+        .mobile-toggle {
+            display: none;
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1001;
+            background: rgba(44, 62, 80, 0.9);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(255,255,255,0.8);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .table th,
+        .table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+
+        .table th {
+            background: rgba(102, 126, 234, 0.1);
+            font-weight: 700;
+            color: #2c3e50;
+        }
+
+        .table tbody tr:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-online {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-offline {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        @media (max-width: 768px) {
+            .app {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                height: 100vh;
+                z-index: 1000;
+                transform: translateX(-100%);
+                width: 280px;
+            }
+            
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            
+            .mobile-toggle {
+                display: block;
+            }
+            
+            .main {
+                margin-left: 0;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .auth-container {
+                margin: 20px;
+                padding: 30px 20px;
+            }
+
+            .stats {
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 15px;
+            }
+
+            .config-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+
+    <!-- OAuth SDKs -->
+    <script src="https://apis.google.com/js/platform.js" async defer></script>
+    <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js"></script>
+</head>
+<body>
+    <div class="background-pattern"></div>
+    <button class="mobile-toggle" id="mobileToggle">☰</button>
+    
+    <div class="app">
+        <!-- Sidebar Navigation -->
+        <div class="sidebar" id="sidebar">
+            <div class="logo">
+                <h2 id="logoTitle">🌐 WiFi Portal</h2>
+                <p id="logoSubtitle">Secure Access</p>
+            </div>
+            <div class="nav-item active" data-page="login">🔐 Login</div>
+            <div class="nav-item" data-page="admin">⚙️ Admin</div>
+            <div class="nav-item" data-page="dashboard">📊 Dashboard</div>
+            <div class="nav-item" data-page="users">👥 Users</div>
+            <div class="nav-item" data-page="config">🛠️ Configuration</div>
+            <div class="nav-item" data-page="monitoring">📈 Monitoring</div>
+            <div class="nav-item" data-page="logs">📝 Logs</div>
+        </div>
+
+        <div class="main">
+            <!-- WiFi Authentication Page -->
+            <div id="login" class="page active">
+                <div class="content" style="display: flex; align-items: center; justify-content: center; min-height: 100vh;">
+                    <div class="auth-container">
+                        <div class="auth-header">
+                            <div class="auth-icon">🔐</div>
+                            <h1 class="auth-title" id="portalTitle">WiFi Authentication</h1>
+                            <p class="auth-subtitle" id="portalSubtitle">Choose your login method</p>
+                        </div>
+
+                        <!-- Authentication Methods -->
+                        <div class="auth-methods" id="authMethods">
+                            <div class="auth-method active" data-method="credentials">
+                                <span class="auth-method-icon">👤</span>
+                                Username & Password
+                            </div>
+                            <div class="auth-method" data-method="oauth" id="oauthMethod" style="display: none;">
+                                <span class="auth-method-icon">🚀</span>
+                                Social Login
+                            </div>
+                            <div class="auth-method" data-method="email" id="emailMethod" style="display: none;">
+                                <span class="auth-method-icon">📧</span>
+                                Email Signup
+                            </div>
+                            <div class="auth-method" data-method="ldap" id="ldapMethod" style="display: none;">
+                                <span class="auth-method-icon">🏢</span>
+                                Corporate Login
+                            </div>
+                        </div>
+
+                        <!-- Credentials Form -->
+                        <form id="credentialsForm" class="auth-form">
+                            <div class="form-group">
+                                <label class="form-label">Username</label>
+                                <input type="text" class="form-control" id="username" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Password</label>
+                                <input type="password" class="form-control" id="password" required>
+                            </div>
+                            <button type="submit" class="auth-btn">
+                                🚀 Connect to Internet
+                            </button>
+                        </form>
+
+                        <!-- OAuth Form -->
+                        <div id="oauthForm" class="auth-form" style="display: none;">
+                            <div class="oauth-buttons">
+                                <a href="#" class="oauth-btn google" id="googleLogin" style="display: none;">
+                                    <span style="margin-right: 10px;">📱</span>
+                                    Continue with Google
+                                </a>
+                                <a href="#" class="oauth-btn facebook" id="facebookLogin" style="display: none;">
+                                    <span style="margin-right: 10px;">📘</span>
+                                    Continue with Facebook
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Email Signup Form -->
+                        <form id="emailForm" class="auth-form" style="display: none;">
+                            <div class="form-group">
+                                <label class="form-label">Email Address</label>
+                                <input type="email" class="form-control" id="email" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Full Name</label>
+                                <input type="text" class="form-control" id="fullName" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Create Password</label>
+                                <input type="password" class="form-control" id="newPassword" required>
+                            </div>
+                            <button type="submit" class="auth-btn">
+                                📧 Sign Up & Connect
+                            </button>
+                        </form>
+
+                        <!-- LDAP Form -->
+                        <form id="ldapForm" class="auth-form" style="display: none;">
+                            <div class="form-group">
+                                <label class="form-label">Corporate Username</label>
+                                <input type="text" class="form-control" id="ldapUsername" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Corporate Password</label>
+                                <input type="password" class="form-control" id="ldapPassword" required>
+                            </div>
+                            <button type="submit" class="auth-btn">
+                                🏢 Corporate Login
+                            </button>
+                        </form>
+                        
+                        <div class="client-info" id="clientInfo">
+                            <strong>Your IP:</strong> <span id="clientIP">Detecting...</span><br>
+                            <strong>Network:</strong> <span id="networkName">PublicHotspot</span><br>
+                            <strong>Status:</strong> <span id="authStatus">Authentication Required</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Login Page -->
+            <div id="admin" class="page">
+                <div class="content" style="display: flex; align-items: center; justify-content: center; min-height: 100vh;">
+                    <div class="auth-container">
+                        <div class="auth-header">
+                            <div class="auth-icon">⚙️</div>
+                            <h1 class="auth-title">Admin Panel</h1>
+                            <p class="auth-subtitle">Administrator Access Required</p>
+                        </div>
+                        
+                        <form id="adminForm">
+                            <div class="form-group">
+                                <label class="form-label">Admin Username</label>
+                                <input type="text" class="form-control" id="adminUsername" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Admin Password</label>
+                                <input type="password" class="form-control" id="adminPassword" required>
+                            </div>
+                            <button type="submit" class="auth-btn">
+                                🔓 Admin Login
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dashboard -->
+            <div id="dashboard" class="page">
+                <div class="header">
+                    <h1>Portal Dashboard</h1>
+                    <div>
+                        <button class="btn btn-primary" id="refreshBtn">🔄 Refresh</button>
+                        <button class="btn btn-success" id="exportBtn">📊 Export</button>
+                    </div>
+                </div>
+                <div class="content">
+                    <div class="admin-container">
+                        <div class="stats">
+                            <div class="stat-card">
+                                <div class="stat-value" id="activeUsersCount">0</div>
+                                <div class="stat-label">Active Users</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="totalSessions">0</div>
+                                <div class="stat-label">Total Sessions</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="bandwidthUsage">0 GB</div>
+                                <div class="stat-label">Bandwidth Used</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="systemUptime">0%</div>
+                                <div class="stat-label">System Uptime</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Users Management -->
+            <div id="users" class="page">
+                <div class="header">
+                    <h1>User Management</h1>
+                    <div>
+                        <button class="btn btn-success" id="exportUsersBtn">📊 Export Users</button>
+                    </div>
+                </div>
+                <div class="content">
+                    <div class="admin-container">
+                        <div class="card">
+                            <div class="card-header">Connected Users</div>
+                            <div class="card-body">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>User</th>
+                                            <th>Method</th>
+                                            <th>IP Address</th>
+                                            <th>Connected</th>
+                                            <th>Data Used</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="usersTableBody">
+                                        <!-- Users will be populated here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuration Page -->
+            <div id="config" class="page">
+                <div class="header">
+                    <h1>Portal Configuration</h1>
+                    <div>
+                        <button class="btn btn-success" id="saveConfigBtn">💾 Save Configuration</button>
+                        <button class="btn btn-warning" id="resetConfigBtn">🔄 Reset to Defaults</button>
+                    </div>
+                </div>
+                <div class="content">
+                    <div class="admin-container" id="configContainer">
+                        <!-- Configuration sections will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Monitoring Page -->
+            <div id="monitoring" class="page">
+                <div class="header">
+                    <h1>System Monitoring</h1>
+                    <div>
+                        <button class="btn btn-primary" id="refreshMonitoringBtn">🔄 Refresh</button>
+                    </div>
+                </div>
+                <div class="content">
+                    <div class="admin-container">
+                        <div class="stats">
+                            <div class="stat-card">
+                                <div class="stat-value" id="cpuUsage">0%</div>
+                                <div class="stat-label">CPU Usage</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="memoryUsage">0%</div>
+                                <div class="stat-label">Memory Usage</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="diskUsage">0%</div>
+                                <div class="stat-label">Disk Usage</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="networkLoad">0 Mbps</div>
+                                <div class="stat-label">Network Load</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Logs Page -->
+            <div id="logs" class="page">
+                <div class="header">
+                    <h1>System Logs</h1>
+                    <div>
+                        <button class="btn btn-primary" id="refreshLogsBtn">🔄 Refresh</button>
+                        <button class="btn btn-warning" id="clearLogsBtn">🗑️ Clear</button>
+                    </div>
+                </div>
+                <div class="content">
+                    <div class="admin-container">
+                        <div class="card">
+                            <div class="card-header">Real-time System Logs</div>
+                            <div class="card-body">
+                                <div id="logsContainer" style="background: #2c3e50; color: white; padding: 20px; border-radius: 8px; height: 400px; overflow-y: auto; font-family: monospace; font-size: 13px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="notification" class="notification"></div>
+
+    <script>
+        // Global configuration and state
+        let portalConfig = {
+            portal_name: "WiFi Portal",
+            ssid: "PublicHotspot",
+            github_portal_url: "",
+            auth: {
+                google: { enabled: false, client_id: "" },
+                facebook: { enabled: false, app_id: "" },
+                email: { enabled: false },
+                ldap: { enabled: false }
+            }
+        };
+
+        let currentPage = 'login';
+        let isAuthMode = true;
+        let isAdminMode = false;
+        let authParams = null;
+        let connectedUsers = [];
+        let systemStats = {
+            activeUsers: 0,
+            totalSessions: 0,
+            bandwidthUsage: 0,
+            uptime: 0
+        };
+
+        // =============================================================================
+        // UTILITY FUNCTIONS
+        // =============================================================================
+
+        function showNotification(message, type) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type} show`;
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 5000);
+        }
+
+        function addLog(message) {
+            const logsContainer = document.getElementById('logsContainer');
+            const time = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${time}] ${message}`;
+            logsContainer.appendChild(logEntry);
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        }
+
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // =============================================================================
+        // CONFIGURATION MANAGEMENT
+        // =============================================================================
+
+        async function loadConfiguration() {
+            try {
+                const response = await fetch('/api/config');
+                if (response.ok) {
+                    portalConfig = await response.json();
+                    updateUIFromConfig();
+                }
+            } catch (error) {
+                console.log('Using default configuration');
+                updateUIFromConfig();
+            }
+        }
+
+        function updateUIFromConfig() {
+            document.getElementById('portalTitle').textContent = portalConfig.portal_name;
+            document.getElementById('logoTitle').textContent = `🌐 ${portalConfig.portal_name}`;
+            document.getElementById('networkName').textContent = portalConfig.ssid;
+
+            // Show/hide authentication methods
+            if (portalConfig.auth.google.enabled || portalConfig.auth.facebook.enabled) {
+                document.getElementById('oauthMethod').style.display = 'block';
+            }
+            if (portalConfig.auth.email.enabled) {
+                document.getElementById('emailMethod').style.display = 'block';
+            }
+            if (portalConfig.auth.ldap.enabled) {
+                document.getElementById('ldapMethod').style.display = 'block';
+            }
+
+            // Setup OAuth buttons
+            if (portalConfig.auth.google.enabled) {
+                document.getElementById('googleLogin').style.display = 'block';
+                initializeGoogleAuth();
+            }
+            if (portalConfig.auth.facebook.enabled) {
+                document.getElementById('facebookLogin').style.display = 'block';
+                initializeFacebookAuth();
+            }
+        }
+
+        function generateConfigurationUI() {
+            const configContainer = document.getElementById('configContainer');
+            configContainer.innerHTML = `
+                <!-- Basic Settings -->
+                <div class="config-section">
+                    <h3>🌐 Basic Portal Settings</h3>
+                    <div class="config-grid">
+                        <div class="form-group">
+                            <label class="form-label">Portal Name</label>
+                            <input type="text" class="form-control" id="configPortalName" value="${portalConfig.portal_name}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">WiFi Network Name (SSID)</label>
+                            <input type="text" class="form-control" id="configSSID" value="${portalConfig.ssid}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">GitHub Portal URL</label>
+                            <input type="url" class="form-control" id="configGithubURL" value="${portalConfig.github_portal_url || ''}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Session Timeout (seconds)</label>
+                            <input type="number" class="form-control" id="configTimeout" value="${portalConfig.session?.timeout || 3600}">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Google OAuth Settings -->
+                <div class="config-section">
+                    <h3>📱 Google OAuth Configuration</h3>
+                    <div class="config-grid">
+                        <div class="form-group">
+                            <label class="form-label">
+                                Enable Google Authentication
+                                <label class="switch">
+                                    <input type="checkbox" id="configGoogleEnabled" ${portalConfig.auth.google.enabled ? 'checked' : ''}>
+                                    <span class="slider"></span>
+                                </label>
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Google Client ID</label>
+                            <input type="text" class="form-control" id="configGoogleClientId" value="${portalConfig.auth.google.client_id || ''}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Google Client Secret</label>
+                            <input type="password" class="form-control" id="configGoogleClientSecret" value="${portalConfig.auth.google.client_secret || ''}">
+                        </div>
+                        <div class="form-group">
+                            <small class="text-muted">
+                                Configure at: <a href="https://console.developers.google.com" target="_blank">Google Developer Console</a>
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Facebook OAuth Settings -->
+                <div class="config-section">
+                    <h3>📘 Facebook OAuth Configuration</h3>
+                    <div class="config-grid">
+                        <div class="form-group">
+                            <label class="form-label">
+                                Enable Facebook Authentication
+                                <label class="switch">
+                                    <input type="checkbox" id="configFacebookEnabled" ${portalConfig.auth.facebook.enabled ? 'checked' : ''}>
+                                    <span class="slider"></span>
+                                </label>
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Facebook App ID</label>
+                            <input type="text" class="form-control" id="configFacebookAppId" value="${portalConfig.auth.facebook.app_id || ''}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Facebook App Secret</label>
+                            <input type="password" class="form-control" id="configFacebookAppSecret" value="${portalConfig.auth.facebook.app_secret || ''}">
+                        </div>
+                        <div class="form-group">
+                            <small class="text-muted">
+                                Configure at: <a href="https://developers.facebook.com" target="_blank">Facebook Developers</a>
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Email Settings -->
+                <div class="config-section">
+                    <h3>📧 Email Signup Configuration</h3>
+                    <div class="config-grid">
+                        <div class="form-group">
+                            <label class="form-label">
+                                Enable Email Signup
+                                <label class="switch">
+                                    <input type="checkbox" id="configEmailEnabled" ${portalConfig.auth.email.enabled ? 'checked' : ''}>
+                                    <span class="slider"></span>
+                                </label>
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">SMTP Host</label>
+                            <input type="text" class="form-control" id="configSMTPHost" value="${portalConfig.auth.email?.smtp?.host || ''}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">SMTP Port</label>
+                            <input type="number" class="form-control" id="configSMTPPort" value="${portalConfig.auth.email?.smtp?.port || 587}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">SMTP Username</label>
+                            <input type="text" class="form-control" id="configSMTPUser" value="${portalConfig.auth.email?.smtp?.username || ''}">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- LDAP Settings -->
+                <div class="config-section">
+                    <h3>🏢 LDAP/Active Directory Configuration</h3>
+                    <div class="config-grid">
+                        <div class="form-group">
+                            <label class="form-label">
+                                Enable LDAP Authentication
+                                <label class="switch">
+                                    <input type="checkbox" id="configLDAPEnabled" ${portalConfig.auth.ldap.enabled ? 'checked' : ''}>
+                                    <span class="slider"></span>
+                                </label>
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">LDAP Host</label>
+                            <input type="text" class="form-control" id="configLDAPHost" value="${portalConfig.auth.ldap?.host || ''}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">LDAP Port</label>
+                            <input type="number" class="form-control" id="configLDAPPort" value="${portalConfig.auth.ldap?.port || 389}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Base DN</label>
+                            <input type="text" class="form-control" id="configLDAPBaseDN" value="${portalConfig.auth.ldap?.base_dn || ''}">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Network Settings -->
+                <div class="config-section">
+                    <h3>🌐 Network Configuration</h3>
+                    <div class="config-grid">
+                        <div class="form-group">
+                            <label class="form-label">WiFi Interface</label>
+                            <input type="text" class="form-control" id="configInterface" value="${portalConfig.interface || 'wlan0'}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Portal Domain</label>
+                            <input type="text" class="form-control" id="configDomain" value="${portalConfig.domain || 'wifi.portal'}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Redirect Port</label>
+                            <input type="number" class="form-control" id="configRedirectPort" value="${portalConfig.ports?.redirect || 8080}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Bandwidth Limit (Mbps)</label>
+                            <input type="number" class="form-control" id="configBandwidthLimit" value="${portalConfig.session?.bandwidth_limit || 0}">
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // =============================================================================
+        // AUTHENTICATION HANDLERS
+        // =============================================================================
+
+        function getUrlParams() {
+            const params = new URLSearchParams(window.location.search);
+            return {
+                client_ip: params.get('client_ip'),
+                return_url: params.get('return_url'),
+                redirect_url: params.get('redirect_url'),
+                admin: params.get('admin')
+            };
+        }
+
+        async function authenticateUser(method, credentials) {
+            const authParams = getUrlParams();
+            
+            try {
+                const response = await fetch('/api/authenticate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        method: method,
+                        credentials: credentials,
+                        client_ip: authParams.client_ip || 'demo',
+                        return_url: authParams.return_url
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('authStatus').textContent = 'Authentication Successful!';
+                    showNotification('Authentication successful! Redirecting...', 'success');
+                    
+                    // Add user to connected users
+                    const user = {
+                        id: generateId(),
+                        username: credentials.username || credentials.email || 'OAuth User',
+                        method: method,
+                        ip: authParams.client_ip || 'demo',
+                        connected: new Date().toLocaleTimeString(),
+                        dataUsed: 0,
+                        status: 'online'
+                    };
+                    connectedUsers.push(user);
+                    updateUsersTable();
+                    updateDashboardStats();
+                    
+                    addLog(`User authenticated: ${user.username} via ${method}`);
+                    
+                    // Redirect after 2 seconds
+                    setTimeout(() => {
+                        if (authParams.redirect_url) {
+                            window.location.href = authParams.redirect_url;
+                        } else {
+                            window.location.href = 'https://www.google.com';
+                        }
+                    }, 2000);
+                    
+                    return true;
+                } else {
+                    throw new Error(result.message || 'Authentication failed');
+                }
+            } catch (error) {
+                console.error('Auth error:', error);
+                showNotification('Authentication failed: ' + error.message, 'error');
+                return false;
+            }
+        }
+
+        function initializeGoogleAuth() {
+            if (portalConfig.auth.google.enabled && portalConfig.auth.google.client_id) {
+                gapi.load('auth2', () => {
+                    gapi.auth2.init({
+                        client_id: portalConfig.auth.google.client_id
+                    });
+                });
+            }
+        }
+
+        function initializeFacebookAuth() {
+            if (portalConfig.auth.facebook.enabled && portalConfig.auth.facebook.app_id) {
+                window.fbAsyncInit = function() {
+                    FB.init({
+                        appId: portalConfig.auth.facebook.app_id,
+                        cookie: true,
+                        xfbml: true,
+                        version: 'v18.0'
+                    });
+                };
+            }
+        }
+
+        async function googleSignIn() {
+            try {
+                const authInstance = gapi.auth2.getAuthInstance();
+                const user = await authInstance.signIn();
+                const profile = user.getBasicProfile();
+                
+                await authenticateUser('google', {
+                    email: profile.getEmail(),
+                    name: profile.getName(),
+                    id: profile.getId()
+                });
+            } catch (error) {
+                showNotification('Google authentication failed', 'error');
+            }
+        }
+
+        async function facebookSignIn() {
+            try {
+                FB.login((response) => {
+                    if (response.authResponse) {
+                        FB.api('/me', {fields: 'name,email'}, async (user) => {
+                            await authenticateUser('facebook', {
+                                email: user.email,
+                                name: user.name,
+                                id: user.id
+                            });
+                        });
+                    }
+                }, {scope: 'email'});
+            } catch (error) {
+                showNotification('Facebook authentication failed', 'error');
+            }
+        }
+
+        // =============================================================================
+        // UI MANAGEMENT
+        // =============================================================================
+
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            document.getElementById(pageId).classList.add('active');
+            document.querySelector(`[data-page="${pageId}"]`).classList.add('active');
+            
+            currentPage = pageId;
+            
+            // Generate dynamic content for certain pages
+            if (pageId === 'config' && isAdminMode) {
+                generateConfigurationUI();
+            }
+            
+            addLog(`Navigated to ${pageId} page`);
+        }
+
+        function switchAuthMethod(method) {
+            document.querySelectorAll('.auth-method').forEach(m => m.classList.remove('active'));
+            document.querySelectorAll('.auth-form').forEach(f => f.style.display = 'none');
+            
+            document.querySelector(`[data-method="${method}"]`).classList.add('active');
+            document.getElementById(`${method}Form`).style.display = 'block';
+            
+            if (method === 'oauth') {
+                document.getElementById('oauthForm').style.display = 'block';
+            }
+        }
+
+        function updateUsersTable() {
+            const tbody = document.getElementById('usersTableBody');
+            tbody.innerHTML = '';
+            
+            connectedUsers.forEach(user => {
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${user.username}</td>
+                    <td><span class="status-badge" style="background: #e3f2fd; color: #1976d2;">${user.method}</span></td>
+                    <td>${user.ip}</td>
+                    <td>${user.connected}</td>
+                    <td>${formatBytes(user.dataUsed * 1024 * 1024)}</td>
+                    <td><span class="status-badge status-${user.status}">${user.status}</span></td>
+                    <td>
+                        <button class="btn btn-danger btn-sm" onclick="disconnectUser('${user.id}')">Disconnect</button>
+                    </td>
+                `;
+            });
+        }
+
+        function updateDashboardStats() {
+            systemStats.activeUsers = connectedUsers.filter(u => u.status === 'online').length;
+            systemStats.totalSessions = connectedUsers.length;
+            systemStats.bandwidthUsage = connectedUsers.reduce((total, user) => total + user.dataUsed, 0);
+            
+            document.getElementById('activeUsersCount').textContent = systemStats.activeUsers;
+            document.getElementById('totalSessions').textContent = systemStats.totalSessions;
+            document.getElementById('bandwidthUsage').textContent = formatBytes(systemStats.bandwidthUsage * 1024 * 1024);
+            document.getElementById('systemUptime').textContent = '99.9%';
+        }
+
+        function disconnectUser(userId) {
+            const userIndex = connectedUsers.findIndex(u => u.id === userId);
+            if (userIndex !== -1) {
+                const user = connectedUsers[userIndex];
+                user.status = 'offline';
+                updateUsersTable();
+                updateDashboardStats();
+                showNotification(`User ${user.username} disconnected`, 'warning');
+                addLog(`User disconnected: ${user.username}`);
+            }
+        }
+
+        async function saveConfiguration() {
+            const newConfig = {
+                portal_name: document.getElementById('configPortalName').value,
+                ssid: document.getElementById('configSSID').value,
+                github_portal_url: document.getElementById('configGithubURL').value,
+                interface: document.getElementById('configInterface').value,
+                domain: document.getElementById('configDomain').value,
+                ports: {
+                    redirect: parseInt(document.getElementById('configRedirectPort').value)
+                },
+                session: {
+                    timeout: parseInt(document.getElementById('configTimeout').value),
+                    bandwidth_limit: parseInt(document.getElementById('configBandwidthLimit').value)
+                },
+                auth: {
+                    google: {
+                        enabled: document.getElementById('configGoogleEnabled').checked,
+                        client_id: document.getElementById('configGoogleClientId').value,
+                        client_secret: document.getElementById('configGoogleClientSecret').value
+                    },
+                    facebook: {
+                        enabled: document.getElementById('configFacebookEnabled').checked,
+                        app_id: document.getElementById('configFacebookAppId').value,
+                        app_secret: document.getElementById('configFacebookAppSecret').value
+                    },
+                    email: {
+                        enabled: document.getElementById('configEmailEnabled').checked,
+                        smtp: {
+                            host: document.getElementById('configSMTPHost').value,
+                            port: parseInt(document.getElementById('configSMTPPort').value),
+                            username: document.getElementById('configSMTPUser').value
+                        }
+                    },
+                    ldap: {
+                        enabled: document.getElementById('configLDAPEnabled').checked,
+                        host: document.getElementById('configLDAPHost').value,
+                        port: parseInt(document.getElementById('configLDAPPort').value),
+                        base_dn: document.getElementById('configLDAPBaseDN').value
+                    }
+                }
+            };
+
+            try {
+                const response = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newConfig)
+                });
+
+                if (response.ok) {
+                    portalConfig = newConfig;
+                    updateUIFromConfig();
+                    showNotification('Configuration saved successfully!', 'success');
+                    addLog('Portal configuration updated');
+                } else {
+                    throw new Error('Failed to save configuration');
+                }
+            } catch (error) {
+                showNotification('Failed to save configuration: ' + error.message, 'error');
+            }
+        }
+
+        function updateMonitoringStats() {
+            document.getElementById('cpuUsage').textContent = (Math.random() * 50 + 20).toFixed(0) + '%';
+            document.getElementById('memoryUsage').textContent = (Math.random() * 40 + 40).toFixed(0) + '%';
+            document.getElementById('diskUsage').textContent = (Math.random() * 30 + 15).toFixed(0) + '%';
+            document.getElementById('networkLoad').textContent = (Math.random() * 200 + 50).toFixed(0) + ' Mbps';
+        }
+
+        // =============================================================================
+        // EVENT HANDLERS
+        // =============================================================================
+
+        function initializeEventHandlers() {
+            // Navigation
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const pageId = this.getAttribute('data-page');
+                    if (pageId === 'admin' || pageId === 'dashboard' || pageId === 'users' || 
+                        pageId === 'config' || pageId === 'monitoring' || pageId === 'logs') {
+                        if (!isAdminMode && pageId !== 'admin') {
+                            showNotification('Admin access required', 'warning');
+                            showPage('admin');
+                            return;
+                        }
+                    }
+                    showPage(pageId);
+                });
+            });
+
+            // Mobile toggle
+            document.getElementById('mobileToggle').addEventListener('click', () => {
+                document.getElementById('sidebar').classList.toggle('show');
+            });
+
+            // Authentication method switching
+            document.querySelectorAll('.auth-method').forEach(method => {
+                method.addEventListener('click', function() {
+                    const methodType = this.getAttribute('data-method');
+                    switchAuthMethod(methodType);
+                });
+            });
+
+            // Form submissions
+            document.getElementById('credentialsForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                await authenticateUser('credentials', { username, password });
+            });
+
+            document.getElementById('emailForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const email = document.getElementById('email').value;
+                const fullName = document.getElementById('fullName').value;
+                const newPassword = document.getElementById('newPassword').value;
+                await authenticateUser('email', { email, name: fullName, password: newPassword });
+            });
+
+            document.getElementById('ldapForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const username = document.getElementById('ldapUsername').value;
+                const password = document.getElementById('ldapPassword').value;
+                await authenticateUser('ldap', { username, password });
+            });
+
+            document.getElementById('adminForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const username = document.getElementById('adminUsername').value;
+                const password = document.getElementById('adminPassword').value;
+                
+                // Simple admin check (in production, this should be server-side)
+                if (username === 'admin' && password === 'admin123') {
+                    isAdminMode = true;
+                    showNotification('Admin access granted', 'success');
+                    addLog('Admin login successful');
+                    showPage('dashboard');
+                } else {
+                    showNotification('Invalid admin credentials', 'error');
+                }
+            });
+
+            // OAuth buttons
+            document.getElementById('googleLogin').addEventListener('click', googleSignIn);
+            document.getElementById('facebookLogin').addEventListener('click', facebookSignIn);
+
+            // Admin buttons
+            document.getElementById('refreshBtn')?.addEventListener('click', () => {
+                updateDashboardStats();
+                showNotification('Dashboard refreshed', 'success');
+            });
+
+            document.getElementById('saveConfigBtn')?.addEventListener('click', saveConfiguration);
+
+            document.getElementById('refreshMonitoringBtn')?.addEventListener('click', () => {
+                updateMonitoringStats();
+                showNotification('Monitoring data refreshed', 'success');
+            });
+
+            document.getElementById('refreshLogsBtn')?.addEventListener('click', () => {
+                addLog('Log display refreshed by administrator');
+                showNotification('Logs refreshed', 'info');
+            });
+
+            document.getElementById('clearLogsBtn')?.addEventListener('click', () => {
+                if (confirm('Clear all logs?')) {
+                    document.getElementById('logsContainer').innerHTML = '';
+                    showNotification('Logs cleared', 'warning');
+                    addLog('System logs cleared by administrator');
+                }
+            });
+        }
+
+        // =============================================================================
+        // INITIALIZATION
+        // =============================================================================
+
+        function checkMode() {
+            const urlParams = getUrlParams();
+            authParams = urlParams;
+            
+            // Check if this is admin mode
+            if (urlParams.admin) {
+                isAdminMode = false; // Still need to authenticate
+                isAuthMode = false;
+                showPage('admin');
+                return;
+            }
+            
+            // Check if this is captive portal mode
+            if (urlParams.client_ip && urlParams.return_url) {
+                isAuthMode = true;
+                document.getElementById('clientIP').textContent = urlParams.client_ip;
+                addLog(`Captive portal authentication: ${urlParams.client_ip}`);
+                showPage('login');
+            } else {
+                // Demo mode
+                isAuthMode = false;
+                addLog('Portal demo mode - all features available');
+                showNotification('Demo Mode - All features available for testing!', 'info');
+                
+                // Add some demo users
+                connectedUsers = [
+                    {
+                        id: 'demo1',
+                        username: 'john_doe',
+                        method: 'credentials',
+                        ip: '192.168.4.100',
+                        connected: '10:30:15',
+                        dataUsed: 156,
+                        status: 'online'
+                    },
+                    {
+                        id: 'demo2',
+                        username: 'mary_smith',
+                        method: 'google',
+                        ip: '192.168.4.101',
+                        connected: '11:15:22',
+                        dataUsed: 89,
+                        status: 'online'
+                    }
+                ];
+                
+                updateUsersTable();
+                updateDashboardStats();
+            }
+        }
+
+        // Initialize application
+        document.addEventListener('DOMContentLoaded', async function() {
+            addLog('Portal system initializing...');
+            
+            await loadConfiguration();
+            initializeEventHandlers();
+            checkMode();
+            
+            // Start monitoring updates
+            setInterval(() => {
+                if (isAdminMode) {
+                    updateMonitoringStats();
+                    // Simulate data usage growth
+                    connectedUsers.forEach(user => {
+                        if (user.status === 'online') {
+                            user.dataUsed += Math.random() * 2;
+                        }
+                    });
+                    updateUsersTable();
+                    updateDashboardStats();
+                }
+            }, 5000);
+            
+            addLog('Portal system ready');
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (isAdminMode) {
+                addLog('Admin session ended');
+            }
+        });
+
+        console.log('🌐 Enhanced WiFi Portal with Multi-Authentication Loaded!');
+        console.log('Features: Google OAuth, Facebook OAuth, Email Signup, LDAP, Admin Panel');
+    </script>
+</body>
+</html>
