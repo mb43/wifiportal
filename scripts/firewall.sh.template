@@ -1,0 +1,41 @@
+#!/bin/bash
+# Firewall configuration
+
+# Flush rules
+iptables -F
+iptables -t nat -F
+
+# Default policies
+iptables -P INPUT ACCEPT
+iptables -P FORWARD DROP
+iptables -P OUTPUT ACCEPT
+
+# Allow loopback
+iptables -A INPUT -i lo -j ACCEPT
+
+# Allow established connections
+iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+# Allow SSH
+iptables -A INPUT -p tcp --dport 22 -j ACCEPT
+
+# Allow portal ports
+iptables -A INPUT -p tcp --dport 80 -j ACCEPT
+iptables -A INPUT -p tcp --dport 443 -j ACCEPT
+iptables -A INPUT -p tcp --dport {{REDIRECT_PORT}} -j ACCEPT
+iptables -A INPUT -p tcp --dport {{ADMIN_PORT}} -j ACCEPT
+
+# Allow DNS and DHCP
+iptables -A INPUT -p udp --dport 53 -j ACCEPT
+iptables -A INPUT -p tcp --dport 53 -j ACCEPT
+iptables -A INPUT -p udp --dport 67:68 -j ACCEPT
+
+# Captive portal redirect
+iptables -t nat -A PREROUTING -i {{INTERFACE}} -p tcp --dport 80 -j REDIRECT --to-port {{REDIRECT_PORT}}
+iptables -t nat -A PREROUTING -i {{INTERFACE}} -p tcp --dport 443 -j REDIRECT --to-port {{REDIRECT_PORT}}
+
+# NAT for internet
+iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+
+# Save rules
+iptables-save > /etc/iptables/rules.v4 2>/dev/null || true
