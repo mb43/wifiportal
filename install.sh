@@ -32,7 +32,7 @@ else
 fi
 
 # Install git if needed
-if ! command -v git &> /div/null; then
+if ! command -v git &> /dev/null; then
     echo "Installing git..."
     apt update && apt install -y git || yum install -y git || dnf install -y git
 fi
