@@ -62,6 +62,21 @@ Configure during setup or via admin panel:
 - **Email Signup**: Requires SMTP settings
 - **LDAP/AD**: For corporate networks
 
+### 🔑 Default Credentials
+
+The portal includes demo accounts for testing:
+
+**Admin Access:**
+- Username: `admin`
+- Password: `admin123`
+- Access: Admin panel at `https://your-server:8443`
+
+**Demo User Accounts:**
+- Username: `demo` / Password: `demo123`
+- Username: `user` / Password: `password`
+
+⚠️ **Important**: Change the admin password immediately after installation for production use!
+
 ## 📱 User Experience
 
 1. User connects to WiFi → Auto-redirect to GitHub Pages
